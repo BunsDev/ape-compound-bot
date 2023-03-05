@@ -7,7 +7,7 @@ import { cloneDeep } from "lodash"
 import { GLOBAL_OVERRIDES } from "../constant"
 
 export async function claimAndCompound(compoundInfo: ValidCompoundInfo) {
-    const batches = splitCompoundInfos(compoundInfo, 20)
+    const batches = splitCompoundInfos(compoundInfo, 30)
     logger.info("Try to claimAndCompound, split into " + batches.length + " batches")
     for (const batch of batches) {
         if (!batch || batch.users.length === 0) continue
@@ -107,6 +107,7 @@ const claimApeAndCompoundWithSimulation = async (
             await runtime.provider.getProvider().getGasPrice(),
             runtime.isMainnet
         )
+        // maxPriorityFeePerGas: ethers.utils.parseUnits("2", "gwei"),
     }
     const tx = info.isBakc
         ? await pool.claimPairedApeAndCompound(nftAsset, users, nftPairs, options)
@@ -177,6 +178,7 @@ export async function resolveErrMsg(info: CompoundInfo, e: any) {
 
 export function splitCompoundInfos(compoundInfo: ValidCompoundInfo, limit: number): CompoundInfo[] {
     let splitCompoundInfos: CompoundInfo[] = []
+    const baycSplitLimit = 10
     for (const [collection, collectionInfo] of Object.entries(compoundInfo)) {
         if (!compoundInfo || collectionInfo.users.length === 0) {
             logger.info(`No ${collection} to claim and compound`)
@@ -185,7 +187,7 @@ export function splitCompoundInfos(compoundInfo: ValidCompoundInfo, limit: numbe
 
         let users = cloneDeep(collectionInfo.users)
         let batches = []
-        let tokenIdLimit = limit
+        let tokenIdLimit = collection === "bayc" && baycSplitLimit <= limit ? baycSplitLimit : limit
         let userIndex = 0
 
         let tokenIds = cloneDeep(collectionInfo.tokenIds)
@@ -237,7 +239,8 @@ export function splitCompoundInfos(compoundInfo: ValidCompoundInfo, limit: numbe
                     isBakc: collectionInfo.isBakc,
                     nftPairs: []
                 }
-                tokenIdLimit = limit
+                tokenIdLimit =
+                    collection === "bayc" && baycSplitLimit <= limit ? baycSplitLimit : limit
             }
         }
 
